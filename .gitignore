@@ -1,0 +1,6 @@
+﻿.venv/
+*.db
+__pycache__/
+.vscode/
+.env
+!elderly-monitoring-app/.env
