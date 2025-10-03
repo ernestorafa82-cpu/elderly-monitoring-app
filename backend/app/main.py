@@ -1,30 +1,27 @@
-﻿from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+﻿
+from fastapi import FastAPI, Depends
+from starlette.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 import os
-from app.db import init_db
-from app.routes import timeline, events
 
-app = FastAPI(title="Elderly Monitoring API")
+from app.core.db import get_db
+# from app.routes import events  # <- descomenta si ya tienes el router creado
 
-# --- CORS (poner SIEMPRE después de crear `app`) ---
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:3001")
-allowed = {frontend_origin, "http://localhost:3001", "http://127.0.0.1:3001"}
+app = FastAPI(title="Elderly API")
+
+# CORS (ajusta orígenes en tu .env si quieres)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(allowed),
+    allow_origins=[os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# ---------------------------------------------------
 
-@app.on_event("startup")
-def on_startup():
-    init_db()
+# Incluye rutas (si usas router)
+# app.include_router(events.router)
 
 @app.get("/health")
-def health():
+def health(db=Depends(get_db)):
+    db.execute(text("SELECT 1"))
     return {"status": "ok"}
-
-app.include_router(timeline.router, prefix="/timeline", tags=["timeline"])
-app.include_router(events.router,  prefix="/events",   tags=["events"])

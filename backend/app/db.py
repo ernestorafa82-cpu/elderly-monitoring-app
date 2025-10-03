@@ -1,11 +1,13 @@
-﻿from sqlmodel import SQLModel, create_engine, Session
-import os
+﻿import os
+from sqlmodel import SQLModel, create_engine, Session
 
-DB_URL = os.getenv("DB_URL", "sqlite:///./data.db")
-connect_args = {"check_same_thread": False} if DB_URL.startswith("sqlite") else {}
-engine = create_engine(DB_URL, echo=False, connect_args=connect_args)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
-def init_db():
+engine = create_engine(DATABASE_URL, echo=False, pool_pre_ping=True, connect_args=connect_args)
+
+def init_db() -> None:
+    # Para arranque sin Alembic (dev). En prod, usa migraciones.
     SQLModel.metadata.create_all(engine)
 
 def get_session():

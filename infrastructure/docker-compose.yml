@@ -1,33 +1,71 @@
-﻿version: "3.9"
-services:
+﻿services:
+  db:
+    image: postgres:15-alpine
+    container_name: elderly-db
+    environment:
+      POSTGRES_DB: elderly
+      POSTGRES_USER: elderly
+      POSTGRES_PASSWORD: elderly
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
   backend:
     build:
       context: ../backend
     container_name: elderly-backend
-    ports:
-      - "8000:8000"
     env_file:
       - ../.env
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
     volumes:
       - ../backend/app:/app/app:rw
+      - ../backend/alembic.ini:/app/alembic.ini:ro
+      - ../backend/migrations:/app/migrations:rw
+    command: >
+      sh -c "alembic upgrade head || echo 'Alembic fallo, arrancando igual';
+      uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:8000/health').getcode()==200 else sys.exit(1)"]
+      test:
+        - CMD-SHELL
+        - >
+          python -c "import json,urllib.request,sys; import urllib.error;
+          try:
+              d=json.loads(urllib.request.urlopen('http://localhost:8000/health', timeout=3).read().decode());
+              sys.exit(0 if d.get('status')=='ok' else 1)
+          except Exception:
+              sys.exit(1)"
       interval: 5s
-      timeout: 2s
-      retries: 10
+      timeout: 4s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
 
   frontend:
     build:
       context: ../frontend
     container_name: elderly-frontend
-    ports:
-      - "3000:3000"
     env_file:
       - ../.env
     environment:
-      - NEXT_PUBLIC_API_BASE_URL=
-    volumes:
-      - ../frontend:/usr/src/app:rw
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
     depends_on:
       backend:
         condition: service_healthy
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

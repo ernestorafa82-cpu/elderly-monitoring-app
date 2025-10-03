@@ -1,9 +1,20 @@
-﻿from typing import Optional
-from datetime import datetime
+﻿from datetime import datetime
+from typing import Optional
 from sqlmodel import SQLModel, Field
 
-class Event(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
+# Contratos DTO (buenas prácticas)
+class EventBase(SQLModel):
     type: str
     payload: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+class EventCreate(EventBase):
+    pass
+
+class EventRead(EventBase):
+    id: int
+    created_at: datetime
+
+# Tabla persistente
+class Event(EventBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow, nullable=False)
