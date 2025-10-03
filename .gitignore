@@ -3,7 +3,7 @@
 __pycache__/
 .vscode/
 .env
-!elderly-monitoring-app/.env
+
 
 # no versionar backups accidentales
 *.backup.yml
